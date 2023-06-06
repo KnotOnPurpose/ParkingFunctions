@@ -113,7 +113,7 @@ class Ploting:
                 answer[d][mu] += 1
             else: 
                 answer[d][mu] = 1
-            Ploting.increment_orbit_representative(pref_list)
+            Ploting.next_orbit_rep(pref_list, n)
             if pref_list == [1] * m:
                 break
         return answer
@@ -232,10 +232,12 @@ class Ploting:
             return "$" + s + "$"
                 
     @staticmethod 
-    def next_orbit_rep(arr):
+    def next_orbit_rep(arr, n):
         """
         These lists are a set of representatives for the orbits of $S_n$ in preference lists
-        input: an array which represents a preference list (ascending order, orbit representative). 
+        input: 
+            arr - a preference list in ascending order which is an orbit representative.
+            n   - the number of parking spaces 
         result: modifies the array to be the next orbit representative.
         """
         # j is the first index which is not n
