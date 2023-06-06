@@ -4,13 +4,8 @@ Email: abown@hmc.edu
 Summer 2023
 Making Histograms From Parking Functions
 
-TODO - improvements for code
-separate the data manipulation from the plotting
-
-plotting should take in a list of labels and list of things ordered by defect
-- resulting graph - 2 types (same as orbits)
-
-File management system
+TODO - list of improvements
+Finish separating plotting from counting
 """
 
 from Parking import * 
@@ -20,96 +15,91 @@ import numpy as np
 import os
 
 class Ploting:
-    def __init__(self, cm = plt.cm.Blues):
+
+    def __init__(self, cm = plt.cm.Blues, figsize = None, bar_width = None):
         """
         An object for managing the plot creation
         """
+        # varibales having to do with appearance
         self.cm = cm
+        self.figsize = figsize
+        self.bar_width = bar_width
 
-    ############################################################
-    #   THIS SECTION IS FOR FUNCTIONS WHICH MAKE PLOTS/FILES   #
-    ############################################################
+        # variables having to do with data
+        self.counts = None
+        self.title = ""
+        self.labels = None
+        self.categories = None
 
-    def histogram_complete(self, n, m = None, car = None, stat = "pref"):
+    def plot(self):
+        """
+        Inputs:
+            n - number of parking spots 
+            m - number of cars trying to park
+            stat - the thing to be plotted
+        """
+        Ploting.plot_counts_by_category(self.counts, self.title, self.labels, 
+                                        self.categories, self.cm, self.figsize, 
+                                        self.bar_width)
+
+    ########################################################################
+    #   THIS SECTION IS FOR FUNCTIONS WHICH SET VARIBLES RELATED TO PLOT   #
+    ########################################################################
+        
+    def iterate_all_pref_lists(self, n, m = None, car = None, stat = None):
         """
         Inspiration from Diaconis, Hicks 2017 paper
         Inputs:
             n - number of parking spots 
             m - number of cars trying to park
-            index - the index of the preference to record - 
+            car - the index of the preference to record - 
                     should not matter for counts of preference
-            type - indicates the type of histogram that should be made
+            stat - indicates the type of histogram that should be made
                 choices: "pref" - makes a histogram of the preference of the first car
                          "lucky" - makes a histogram based on the number of lucky cars
-        Outputs: 
-            Displays a plot for the distribution of the preference of the ith car based on defect
+        Result: 
+            Sets all variables related to plotting
         """
+        # Sets defaults
+        m = m or n
+
         index = car or 1
         index -= 1
 
-        m = m or n
+        stat = "pref"
 
-        # count is 2d array - formatted to pass to plot_counts_by_defect
-        counts = [[0]*(n if stat == "pref" else m) for i in range(m)]
+        self.counts = [[0]*(n if stat == "pref" else m) for i in range(m)]
 
         # calculate counts
         park = Park([Car(1) for i in range(m)], n)
         for i in range(n**m):
             if stat == "pref":
-                counts[m - park.parkability()][park.cars[index].preference-1] += 1
+                self.counts[m - park.parkability()][park.cars[index].preference-1] += 1
             elif stat == "lucky":
-                counts[m - park.parkability()][park.lucky() - 1] += 1
+                self.counts[m - park.parkability()][park.lucky() - 1] += 1
             park.next()
         
-        name = "n = " + str(n) + " spots , m = " + str(m) + " cars, " + ("Preference" if stat == "pref" else "Lucky")
-        self.plot_counts_by_defect(counts, name, sep = False)
-
-    def num_defect_partition(self, n, m):
-        """
-        Based on calculations 5/24/2023
-        Inputs:
-            n - number of parking spots 
-            m - number of cars trying to park
-        Outputs: 
-            an array of maps from partitions to counts
-            index of the array indicates the defect number
-            key is a partition - tuple in descending order
-
-            The counts are the number of orbits of S_n with that particular partition type
-            ie $N_d(\lambda)$
-        """
-        m = m or n 
-
-        pref_list = [1] * m 
-
-        answer = [{} for i in range(m)]
-        while True:
-            p = Park(pref_list, n)
-            d = m - p.parkability()
-            mu = Ploting.orbit_type(pref_list)
-            if mu in answer[d]:
-                answer[d][mu] += 1
-            else: 
-                answer[d][mu] = 1
-            Ploting.next_orbit_rep(pref_list, n)
-            if pref_list == [1] * m:
-                break
-        return answer
-
-    def plot_num_defect_partition(self, n, m):
+        # set the rest of the relavent variables
+        self.title = "n = " + str(n) + " spots , m = " + str(m) + " cars, " + ("Preference" if stat == "pref" else "Lucky")
+        self.labels = None # Since labels should be integers which are the index in the array + 1
+        self.categories = None # Since both of the stats use defect as their category
+        
+    def decompose_modules(self, n, m):
         """
         Inputs:
             n - number of parking spots 
             m - number of cars trying to park
         Outputs:
-            Plots!
+            Sets all variables relating to plotting
+            This separates the orbits of $S_n$ into the corresponding defect categories
+            Calculates $N_d(\lambda)$, which gives module decomposition (see 5/30)
         """
-        data = self.num_defect_partition(n,m)
+        data = Ploting.defect_partition_maps(n,m)
 
         partitions = list(data[0].keys())
         partitions.sort()
 
-        partition_counts = []
+        self.counts = []
         for i in range(len(data)):
             L = []
             for j in range(len(partitions)):
@@ -117,14 +107,19 @@ class Ploting:
                     L.append(data[i][partitions[j]])
                 else:
                     L.append(0)
-            partition_counts.append(L)
+            self.counts.append(L)
 
-        labels = [Ploting.tableau_vis(p, "m") for p in partitions]
-        title = "n = " + str(n) + " spots , m = " + str(m) + " cars, " + "number of orbits of $S_\lambda$"
-        self.plot_counts_by_defect(partition_counts, title = title, labels = labels)
-
+        self.title = "n = " + str(n) + " spots , m = " + str(m) + " cars, " + "number of orbits of $S_\lambda$"
+        self.labels = [Ploting.tableau_vis(p, "m") for p in partitions]
+        self.categories = None #Categories is none since categories is just defect
+   
+    # # # # # # # # # #
+    # STATIC METHODS  #
+    # # # # # # # # # #
+ 
     # The method that actually does all of the plotting
-    def plot_counts_by_defect(self, counts, title = "", labels = None, categories = None, figsize = (5,6), sep = True):
+    @staticmethod
+    def plot_counts_by_category(counts, title = None, labels = None, categories = None, cm = None, figsize = None, bar_width = None):
         """
         Inputs: Counts - 2d array. First index is category, second index is value of interest, entry is counts
                 Labels - 1d array. Lables for the value of interest
@@ -134,16 +129,17 @@ class Ploting:
             2. A set of histgrams by defect which 
         """
 
-        print(counts)
-        if labels != None:
-            print("labels = " + str(labels))
-
         # default values and data validation
         labels = labels or [i + 1 for i in range(len(counts[0]))]
         assert len(labels) == len(counts[0])
 
         categories = categories or ["defect " + str(i) for i in range(len(counts))]
         assert len(categories) == len(counts)
+
+        title = title or ""
+        cm = cm or plt.cm.Blues
+        figsize = figsize or (5,6)
+        bar_width = bar_width or 1
 
         # Figure set up
         fig, ax = plt.subplots(figsize = figsize)
@@ -152,12 +148,8 @@ class Ploting:
         # Bar chart variables set up 
         index = np.arange(len(labels)) + 1
         y_offset = np.zeros(len(labels), dtype = int)
-        if sep == True:
-            bar_width = .8
-        if sep == False: 
-            bar_width = 1  
         width = 0
-        colors = np.flip(self.cm(np.linspace(.5, 1, len(counts))), 0)
+        colors = np.flip(cm(np.linspace(.5, 1, len(counts))), 0)
 
         # Bar chart 1 - stacked
         for d in range(len(counts)):
@@ -198,9 +190,38 @@ class Ploting:
         
         plt.show()
 
-    # # # # # # # # # #
-    # STATIC METHODS  #
-    # # # # # # # # # #
+    @staticmethod
+    def defect_partition_maps(n, m):
+        """
+        Based on calculations 5/24/2023
+        Inputs:
+            n - number of parking spots 
+            m - number of cars trying to park
+        Outputs: 
+            an array of maps from partitions to counts
+            index of the array indicates the defect number
+            key is a partition - tuple in descending order
+
+            The counts are the number of orbits of S_n with that particular partition type
+            ie $N_d(\lambda)$
+        """
+        m = m or n 
+
+        pref_list = [1] * m 
+
+        answer = [{} for i in range(m)]
+        while True:
+            p = Park(pref_list, n)
+            d = m - p.parkability()
+            mu = Ploting.orbit_type(pref_list)
+            if mu in answer[d]:
+                answer[d][mu] += 1
+            else: 
+                answer[d][mu] = 1
+            Ploting.next_orbit_rep(pref_list, n)
+            if pref_list == [1] * m:
+                break
+        return answer
 
     @staticmethod
     def tableau_vis(partition, format):
