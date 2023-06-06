@@ -49,42 +49,20 @@ class Ploting:
 
         m = m or n
 
-        # count is 2d array
-        # first index represents the defect - m possibilities
-        # second index represents the preference of the car - n possibilities
-        #                        or the number of lucky cars - m possibilities
+        # count is 2d array - formatted to pass to plot_counts_by_defect
         counts = [[0]*(n if stat == "pref" else m) for i in range(m)]
-        hist_data = [[] for i in range(m)]
 
         # calculate counts
         park = Park([Car(1) for i in range(m)], n)
         for i in range(n**m):
             if stat == "pref":
                 counts[m - park.parkability()][park.cars[index].preference-1] += 1
-                hist_data[m - park.parkability()].append(park.cars[index].preference)
             elif stat == "lucky":
                 counts[m - park.parkability()][park.lucky() - 1] += 1
-                hist_data[m - park.parkability()].append(park.lucky())
             park.next()
         
-        print(counts)
-
-        # plot counts - seperate plots
-        bins =[.5 + i for i in range(len(counts[0]) + 1)]
-        colors = [self.cm((len(hist_data)*1.5 - i)/(len(hist_data)*1.5)) for i in range(len(hist_data))]
-
-        fig, axs = plt.subplots(len(counts), 1, sharex=True, tight_layout=True, figsize = (5, 6))
-        fig.suptitle( "n = " + str(n) + " spots , m = " + str(m) + " cars, " + ("Preference" if stat == "pref" else "Lucky"))
-        for i in range(len(counts)):
-            num, bins, patches = axs[len(axs) - 1 - i].hist(hist_data[i], bins = bins, color = colors[i])
-            axs[len(axs) - 1 - i].set_title("defect " + str(i))
-        
-        # plot counts - same plot
-        fig, ax = plt.subplots(figsize =(5, 6))
-        fig.suptitle( "n = " + str(n) + " spots , m = " + str(m) + " cars, " + ("Preference" if stat == "pref" else "Lucky"))
-        ax.hist(hist_data, bins = bins, color = colors, density=True, histtype='bar', stacked=True)
-        
-        plt.show()
+        name = "n = " + str(n) + " spots , m = " + str(m) + " cars, " + ("Preference" if stat == "pref" else "Lucky")
+        self.plot_counts_by_defect(counts, name, sep = False)
 
     def num_defect_partition(self, n, m):
         """
@@ -141,56 +119,84 @@ class Ploting:
                     L.append(0)
             partition_counts.append(L)
 
-        fig, ax = plt.subplots(figsize =(5, 6))
-        fig.suptitle( "n = " + str(n) + " spots , m = " + str(m) + " cars, " + "number of orbits of $S_\lambda$")
+        labels = [Ploting.tableau_vis(p, "m") for p in partitions]
+        title = "n = " + str(n) + " spots , m = " + str(m) + " cars, " + "number of orbits of $S_\lambda$"
+        self.plot_counts_by_defect(partition_counts, title = title, labels = labels)
 
-        index = np.arange(len(partitions)) + 1
-        y_offset = np.zeros(len(partitions))
-        bar_width = .8  
+    # The method that actually does all of the plotting
+    def plot_counts_by_defect(self, counts, title = "", labels = None, categories = None, figsize = (5,6), sep = True):
+        """
+        Inputs: Counts - 2d array. First index is category, second index is value of interest, entry is counts
+                Labels - 1d array. Lables for the value of interest
+                Category - 1d array. Gives names for category
+        Output: Generates and shows 2 plots:
+            1. A stacked histogram with a table of counts underneath
+            2. A set of histgrams by defect which 
+        """
+
+        print(counts)
+        if labels != None:
+            print("labels = " + str(labels))
+
+        # default values and data validation
+        labels = labels or [i + 1 for i in range(len(counts[0]))]
+        assert len(labels) == len(counts[0])
+
+        categories = categories or ["defect " + str(i) for i in range(len(counts))]
+        assert len(categories) == len(counts)
+
+        # Figure set up
+        fig, ax = plt.subplots(figsize = figsize)
+        fig.suptitle(title)
+
+        # Bar chart variables set up 
+        index = np.arange(len(labels)) + 1
+        y_offset = np.zeros(len(labels), dtype = int)
+        if sep == True:
+            bar_width = .8
+        if sep == False: 
+            bar_width = 1  
         width = 0
-        colors = np.flip(self.cm(np.linspace(.5, 1, len(partition_counts))), 0)
+        colors = np.flip(self.cm(np.linspace(.5, 1, len(counts))), 0)
 
-        for d in range(len(partition_counts)):
-            plt.bar(index, partition_counts[d], bar_width, bottom=y_offset, color=colors[d])
-            y_offset = y_offset + partition_counts[d]
+        # Bar chart 1 - stacked
+        for d in range(len(counts)):
+            plt.bar(index, counts[d], bar_width, bottom=y_offset, color=colors[d])
+            y_offset = y_offset + counts[d]
         
-        #Table
         ax.set_xlim(-width+.5 ,len(index)+.5+width)
-            
-        totals = np.zeros(len(partition_counts[0]), dtype = int)
-        for row in partition_counts:
-            totals += row
-
-        the_table = plt.table(cellText=partition_counts + [totals],
-                            rowLabels=np.append(np.arange(len(partition_counts)), "totals"),
-                            rowColours=np.vstack([colors, [0,0,0,0]]),
-                            colLabels=[Ploting.tableau_vis(p, "m") for p in partitions],
+        
+        # Table under bar chart 1
+        # Note that at this point y_offset is an array of the totals
+        the_table = plt.table(cellText = counts + [y_offset],
+                            rowLabels  = np.append(categories, "totals"),
+                            rowColours = np.vstack([colors, [0,0,0,0]]),
+                            colLabels  = labels,
                             loc='bottom')
         
         the_table.scale(1, 1.2)
         cellDict = the_table.get_celld()
-        for i in range(0,len(partitions)):
-            cellDict[(0,i)].set_height(.1)
+        for i in range(0,len(labels)):
+            cellDict[(0,i)].set_height(.08)
         
         the_table.auto_set_font_size(False)
         the_table.set_fontsize(10) 
         
-        plt.subplots_adjust(bottom=.07 + 0.03 * len(partition_counts))
+        plt.subplots_adjust(bottom=.07 + 0.03 * len(counts))
         plt.xticks([])
 
         # SECOND FIGURE - visualizations split
         plt.figure(1)
-        fig.suptitle( "n = " + str(n) + " spots , m = " + str(m) + " cars, " + "number of orbits of $S_\lambda$")
+        fig, axs = plt.subplots(len(counts), 1, sharex=True, tight_layout=True, figsize = figsize)
+        fig.suptitle(title)
         
-        fig, axs = plt.subplots(len(partition_counts), 1, sharex=True, tight_layout=True, figsize = (5, 6))
-        for i in range(len(partition_counts)):
-            axs[len(axs) - 1 - i].bar(index, partition_counts[i], 
+        for i in range(len(counts)):
+            axs[len(axs) - 1 - i].bar(index,counts[i], bar_width,
                                         color = colors[i])
-            axs[len(axs) - 1 - i].set_title("defect " + str(i))
-        plt.xticks(index, labels = [Ploting.tableau_vis(p, "m") for p in partitions])
+            axs[len(axs) - 1 - i].set_title(categories[i])
+        plt.xticks(index, labels = labels)
         
         plt.show()
-
 
     # # # # # # # # # #
     # STATIC METHODS  #
