@@ -12,8 +12,11 @@ Modify code to optimize:
     I think expected runtime of parking is better than O(n^2)
 """
 
+import random
+import numpy as np
+
 class Park:
-    def __init__(self, cars: list, n = None):
+    def __init__(self, cars: list, n = None, circular = False):
         """
         Park represents an single line of cars trying to park.
         Variables:
@@ -33,10 +36,10 @@ class Park:
         if type(cars[0]) == type(Car(1)): 
             #TODO do this correctly - 97% sure that this is a shortcut, not the right way to do this
             self.cars = cars
-        elif type(cars[0]) == int:
+        elif type(cars[0]) == int or type(cars[0]) == np.int_:
             self.cars = []
             for i in range(len(cars)):
-                self.cars.append(Car(cars[i]))
+                self.cars.append(Car(cars[i], circular = circular))
 
         self.displacement = []
         self.park()
@@ -109,9 +112,21 @@ class Park:
 
     def __str__(self):
         return str([str(c) for c in self.cars]) + " -> " + str(self.lot)
+    
+    @staticmethod
+    def random(n, m):
+        """
+        Input: 
+            n - number of spots
+            m - number of cars
+        Output: 
+            Returns a random car with single spot prefereneces
+        """
+        return Park(np.random.randint(1,n + 1, m))
+
 
 class Car:
-    def __init__(self, preference, pref_type = "default"):
+    def __init__(self, preference, pref_type = "default", circular = False):
         """
         An object which holds the car's preferrence.
         Variables:
@@ -124,6 +139,10 @@ class Car:
         n-tuple: preference is an array, car will choose any spot in the array before moving on 
         ordered-n-tuple: preference is an ordered array
 
+        circular - false for a circular parking lot
+                 - true for a linear probing style parking lot
+                 - TODO could be an integer for requeueing after that many cars
+
         self.displacement - keeps track of the number of occupied spots that a car attempted to 
                             park in at the last time spot was called
 
@@ -131,6 +150,7 @@ class Car:
         """
         self.pref_type = pref_type
         self.preference = preference
+        self.circular = circular
         self.displacement = 0
         if self.pref_type == "ordered-n-tuple":
             self.unedited = [preference[i] for i in range (len(preference))]
@@ -162,6 +182,11 @@ class Car:
                 if lot[i] == None:
                     return i
                 self.displacement += 1
+            if self.circular != False:
+                for i in range(self.preference):
+                    if lot[i] == None:
+                        return i
+                    self.displacement += 1
         if self.pref_type == "n-tuple" or self.pref_type == "ordered-n-tuple":
             # First checks the spots in the n-tuple, then cascades to the spots afterwards
             self.displacement = 0
@@ -192,7 +217,7 @@ class Car:
                 if new_pref == 0:
                     new_pref = n
         
-            return Car(new_pref, self.pref_type)
+            return Car(new_pref, self.pref_type, self.circular)
 
         if self.pref_type == "n-tuple" or self.pref_type == "ordered-n-tuple":
             if self.pref_type == "ordered-n-tuple":
