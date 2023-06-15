@@ -80,6 +80,12 @@ class Park:
         """
         return len(list(filter(lambda x: x != None, self.lot)))
     
+    def defect(self):
+        """
+        Returns the defect associated with the preference list
+        """
+        return len(self.cars) - self.parkability()
+    
     def apply_wr(self, L : list, s, type):
         """
         Returns a new park object corresponding to the wreath product element $type \wr S_n$ applied to the current park item 
