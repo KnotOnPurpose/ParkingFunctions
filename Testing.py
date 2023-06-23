@@ -1,7 +1,25 @@
+"""
+Author: Jasper Bown 
+Email: abown@hmc.edu
+Summer 2023
+This is a file for writing bad code quickly to find answers. 
+Worry about making things modular later - just write code.
+"""
+
 
 from Parking import *
 from TestData import * 
 import sympy as sp
+from Plotting import * 
+
+np.set_printoptions(suppress=True, precision=4)
+
+"""
+#TODO 
+A theme has emerged in that I decomposed functions a Lot. 
+It would be good to make a differnt file that is just function decomposition 
+instead of lumping everything into the testing file.
+"""
 
 """
 June 9th ish
@@ -162,7 +180,7 @@ def by_value(interesting, n, m, hspace = 20, labels = None):
     """
     Prints subscript of decomposition based on fourier transform output values
     """
-    vals = np.unique(np.around(interesting,4), axis = 0)
+    vals = np.unique(np.around(interesting,6), axis = 0)
 
     print(len(vals) - 1)
     for j in range(len(vals)):
@@ -175,7 +193,7 @@ def by_value(interesting, n, m, hspace = 20, labels = None):
             close = np.isclose(interesting, np.ones(np.shape(interesting)) * [vals[j]])
             close = np.prod(close, axis = 1)
         
-        s = np.array2string(vals[j], precision=1)
+        s = np.array2string(vals[j], precision=3)
         s += " "*(hspace - len(s))
         print(s + " : ", end = "")
         for i in range(len(interesting)):
@@ -191,7 +209,10 @@ def by_value(interesting, n, m, hspace = 20, labels = None):
         print()
 
 def group_characters(n,m):
-    ""
+    """
+    Code written to collect all of the values of interest together to be able 
+    to see what characters are always grouped with eachother
+    """
     counts = get_disp(n,m)
     fourier_coeff = np.zeros((len(counts), n**m), complex)
 

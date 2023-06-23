@@ -8,6 +8,7 @@ TODO - list of improvements
 - develop a system for generating many plots at once (save optional)
 - update the plot_counts_by_category so that if there are a Lot of categories,
     the plot is given in multiple columns. (maybe just have columns as an input...)
+- add in a function which can take in a CnmStat and 
 """
 
 from Parking import * 
@@ -18,10 +19,18 @@ import os
 
 class Plot:
 
+    # I only ever need small values of this... so I borrowed the list from OEIS A000041
+    NUM_PARTITIONS = [1, 1, 2, 3, 5, 7, 11, 15, 22, 30, 42, 56, 77, 101, 135, 176, 231, 297, 385, 490, 627, 792, 1002, 1255, 1575, 1958, 2436, 3010, 3718, 4565, 5604]
+
     def __init__(self, cm = plt.cm.Blues, figsize = None, bar_width = None, show_table = True):
         """
         An object for managing the plot creation
+        Inputs: cm - default is Blues
+                figsize - default is (5,6)
+                bar_width - default is 1
+                show_table - default is True
         """
+
         # varibales having to do with appearance
         self.cm = cm
         self.figsize = figsize
@@ -37,7 +46,7 @@ class Plot:
     def plot(self, rows = None):
         """
         Inputs:
-            rows - which rows to plot
+            rows - which rows to plot. Particularly helpful for sampling
         """
         if type(rows) == type(None):
             Plot.plot_counts_by_category(self.counts, self.title, self.labels, 
@@ -108,7 +117,8 @@ class Plot:
         index = car or 1
         index -= 1
 
-        stat = "pref"
+        stat = stat or "pref"
+        assert stat in ["pref", "lucky"]
 
         self.counts = [[0]*(n if stat == "pref" else m) for i in range(m)]
 
@@ -152,10 +162,62 @@ class Plot:
                 self.counts[m - park.parkability()][park.lucky() - 1] += 1
         
         # set the rest of the relavent variables
-        self.title = "Sampling n = " + str(n) + " spots , m = " + str(m) + " cars, " + ("Preference" if stat == "pref" else "Lucky")
+        self.title = "Sampling = " + str(sample) 
+        self.title += ", n = " + str(n) + " spots , m = " + str(m) 
+        self.title += " cars, " + ("Preference" if stat == "pref" else "Lucky")
         self.labels = None # Since labels should be integers which are the index in the array + 1
         self.categories = np.array(["defect " + str(i) for i in range(len(self.counts))])
+                
+    def decompose_modules(self, n, m, size_orbit = False):
+        """
+        Inputs:
+            n - number of parking spots 
+            m - number of cars trying to park
+            size_orbit - if this is true, multiplies by the size of the orbit
+        Outputs:
+            Sets all variables relating to plotting:
+               - data is the number of partitions 
+               - categories are defect
+               - labels are partitions 
+            This separates the orbits of $S_n$ into the corresponding defect categories
+            Calculates $N_d(\lambda)$, which gives module decomposition (see 5/30)
+        """
+        data = Plot.defect_partition_maps(n,m)
 
+        partitions = list(data[0].keys())
+        partitions.sort()
+
+        self.counts = np.zeros((len(data), len(partitions)), dtype=int)
+        for i in range(len(data)):
+            for j in range(len(partitions)):
+                if partitions[j] in data[i]:
+                    self.counts[i][j] = data[i][partitions[j]]
+                    
+        size = np.array([Plot.size_orbit(partitions[i]) for i in range(len(partitions))])
+        if size_orbit:
+            self.counts = np.multiply(self.counts, size)
+
+        self.title = "n = " + str(n) + " spots , m = " + str(m) + " cars, " 
+        self.title += ("total sizes" if size_orbit else "number") +  " of orbits of $S_\lambda$"
+        self.labels = [Plot.tableau_vis(p, "m") for p in partitions]
+        self.categories = None #Categories is none since categories is just defect
+   
+    ############################################
+    # HELPER METHODS FOR POST DATA FILTER/SORT #
+    ############################################
+    def sort_by_total(self):
+        """
+        Reorders the columns by the 
+        """
+        new_counts = np.transpose(self.counts)
+        totals = [np.sum(new_counts[i]) for i in range(len(new_counts))]
+        order = np.argsort(totals, kind = "stable")
+
+        new_counts = new_counts[order]
+
+        self.counts = np.transpose(new_counts)
+        self.labels = np.array(self.labels)[order]
+        
     def threshold(self, threshold):
         """
         returns an array which is true if the value is over the threshold
@@ -170,36 +232,7 @@ class Plot:
                 rows[i] = False
 
         return rows
-                
-    def decompose_modules(self, n, m):
-        """
-        Inputs:
-            n - number of parking spots 
-            m - number of cars trying to park
-        Outputs:
-            Sets all variables relating to plotting
-            This separates the orbits of $S_n$ into the corresponding defect categories
-            Calculates $N_d(\lambda)$, which gives module decomposition (see 5/30)
-        """
-        data = Plot.defect_partition_maps(n,m)
 
-        partitions = list(data[0].keys())
-        partitions.sort()
-
-        self.counts = []
-        for i in range(len(data)):
-            L = []
-            for j in range(len(partitions)):
-                if partitions[j] in data[i]:
-                    L.append(data[i][partitions[j]])
-                else:
-                    L.append(0)
-            self.counts.append(L)
-
-        self.title = "n = " + str(n) + " spots , m = " + str(m) + " cars, " + "number of orbits of $S_\lambda$"
-        self.labels = [Plot.tableau_vis(p, "m") for p in partitions]
-        self.categories = None #Categories is none since categories is just defect
-   
     # # # # # # # # # #
     # STATIC METHODS  #
     # # # # # # # # # #
@@ -210,15 +243,21 @@ class Plot:
                                 cm = None, figsize = None, bar_width = None, show_table = True):
         """
         Inputs: Counts - 2d array. First index is category, second index is value of interest, entry is counts
-                Labels - 1d array. Lables for the value of interest
-                Category - 1d array. Gives names for category
+                Title - string. The title for the plot. Default value ""
+                Labels - 1d array. Lables for the value of interest. Default value - integers (1 indexed)
+                Category - 1d array. Gives names for category. Default value - [defect 0, defect 1, ...]
+                cm - default is Blues
+                figsize - default is (5,6)
+                bar_width - default is 1
+                show_table - default is True
         Output: Generates and shows 2 plots:
-            1. A stacked histogram with a table of counts underneath
-            2. A set of histgrams by defect which 
+            1. A stacked histogram with a table of counts underneath if show_table is true
+            2. A set of histgrams by category
         """
 
         # default values and data validation
-        labels = labels or [i + 1 for i in range(len(counts[0]))]
+        if type(labels) == type(None):
+            labels = [i + 1 for i in range(len(counts[0]))]
         assert len(labels) == len(counts[0])
 
         if type(categories) == type(None):
@@ -262,7 +301,7 @@ class Plot:
                 cellDict[(0,i)].set_height(.08)
             
             the_table.auto_set_font_size(False)
-            the_table.set_fontsize(10) 
+            the_table.set_fontsize(12) 
             
             plt.subplots_adjust(bottom=.12 + 0.02 * (len(counts) + 1))
             plt.xticks([])
@@ -390,4 +429,14 @@ class Plot:
         partition.reverse()
         return tuple(partition)
 
-        
+    @staticmethod
+    def size_orbit(arr):
+        """
+        Returns the size of the orbit of $S_m$ of a preference list with multiplicity partition corresponding to arr
+        Input: arr - gives a partition of $m$
+        Output: Size of the orbit: $m!/\prod_{i = 1}(\lambda_i!)$
+        """
+        ans = np.math.factorial(np.sum(arr))
+        for part in arr:
+            ans = ans/np.math.factorial(part)
+        return int(ans)

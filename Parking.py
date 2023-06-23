@@ -10,10 +10,77 @@ Modify code to optimize:
     include the trick of sorting the cars and taking the max difference of index and preference
     idk how much of a speed up that is - O(n^2) worst case to O(nlog n), but
     I think expected runtime of parking is better than O(n^2)
+
+
+TODO
+code structure wise, it would be good to pull the statistics calculating stuff from plotting
+and just use the calculate statistics object for all of that.
 """
 
 import random
 import numpy as np
+
+class SampleStats:
+    pass
+
+class IterateStats:
+    """
+    This is an object which calculates a lot of useful statistics all at once
+    TODO add an option to sample/record counts which is more geared towards plotting
+    Because it would be good for all of the calculating statistics to happen in the same place
+    
+    ok ok thoughts on code strucutre
+    initialize with n,m,circular,sample
+
+    variables:
+    settings
+    self.n
+    self.m
+    self.circular - boolean
+    self.sample - either None or a number
+
+    calculated stuff
+    self.displacement_counts - row is displacement, col is pref list. ex lucky is row 0
+    
+
+    methods:
+    calculate_all() - for when you really just want to calculate all the things
+                    - also a good place to look for all of the things
+
+    get_graded(stat, graded_by) - useful for plotting 
+                                - returns array of counts AND 
+
+
+    """
+    def __init__(self, n, m = None, circular = True):
+        """
+        Upon creating this object, many useful statistics are calculated
+        """
+        self.n = n
+        self.m = m or n
+        self.circular = circular
+
+        self.displacement_counts = None
+        self.total_disp = None
+        
+    def iterate_displacement(self):
+        """
+        Calculates displacement_counts
+        """
+        self.displacement_counts = np.zeros((self.m, self.n**self.m), int)
+        park = Park([1] * self.m, self.n, circular = self.circular)
+
+        for i in range(self.n**self.m):
+            t = 0
+            for j in range(self.m):
+                cnt = park.displacement.count(j)
+                self.displacement_counts[j][i] = cnt
+                t += cnt
+                if cnt == self.m:
+                    break
+            park.next()
+
+        self.total_disp = np.transpose(np.matrix.transpose(self.displacement_counts).dot(np.arange(len(self.m))))    
 
 class Park:
     def __init__(self, cars: list, n = None, circular = False):
@@ -130,7 +197,6 @@ class Park:
         """
         return Park(np.random.randint(1,n + 1, m))
 
-
 class Car:
     def __init__(self, preference, pref_type = "default", circular = False):
         """
@@ -242,4 +308,3 @@ class Car:
 
     def __str__(self) -> str:
         return str(self.preference)
-
