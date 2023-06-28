@@ -110,6 +110,7 @@ class Plot:
                          "lucky" - makes a histogram based on the number of lucky cars
         Result: 
             Sets all variables related to plotting
+        #TODO maybe make this lean on IterateStats more
         """
         # Sets defaults
         m = m or n
@@ -126,9 +127,9 @@ class Plot:
         park = Park([Car(1) for i in range(m)], n)
         for i in range(n**m):
             if stat == "pref":
-                self.counts[m - park.parkability()][park.cars[index].preference-1] += 1
+                self.counts[park.defect()][park.cars[index].preference-1] += 1
             elif stat == "lucky":
-                self.counts[m - park.parkability()][park.lucky() - 1] += 1
+                self.counts[park.defect()][park.lucky() - 1] += 1
             park.next()
         
         # set the rest of the relavent variables
@@ -139,6 +140,7 @@ class Plot:
     def sample_random_pref_lists(self, n, m = None, sample = None, car = None, stat = None):
         """
         Samples from preference lists uniformly at random and evaluates the given statistic
+        TODO maybe make this lean on a different class for random sampling? not high priority
         """
         # Sets defaults
         m = m or n
@@ -157,9 +159,9 @@ class Plot:
         for i in range(sample):
             park = Park.random(n, m)
             if stat == "pref":
-                self.counts[m - park.parkability()][park.cars[index].preference-1] += 1
+                self.counts[park.defect()][park.cars[index].preference-1] += 1
             elif stat == "lucky":
-                self.counts[m - park.parkability()][park.lucky() - 1] += 1
+                self.counts[park.defect()][park.lucky() - 1] += 1
         
         # set the rest of the relavent variables
         self.title = "Sampling = " + str(sample) 
@@ -207,8 +209,9 @@ class Plot:
     ############################################
     def sort_by_total(self):
         """
-        Reorders the columns by the 
+        Reorders the columns by their total - useful for looking at decomplse_module outputs 
         """
+        
         new_counts = np.transpose(self.counts)
         totals = [np.sum(new_counts[i]) for i in range(len(new_counts))]
         order = np.argsort(totals, kind = "stable")
@@ -221,6 +224,7 @@ class Plot:
     def threshold(self, threshold):
         """
         returns an array which is true if the value is over the threshold
+        this is 
         input: 
             threshold - the cutoff value
         output:
@@ -341,7 +345,7 @@ class Plot:
         answer = [{} for i in range(m)]
         while True:
             p = Park(pref_list, n)
-            d = m - p.parkability()
+            d = p.defect()
             mu = Plot.orbit_type(pref_list)
             if mu in answer[d]:
                 answer[d][mu] += 1

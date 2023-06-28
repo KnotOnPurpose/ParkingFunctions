@@ -85,8 +85,23 @@ def plotting_demo_Ndlambda():
 
     plot = Plot()
 
-    # boolean value indicates weather 
+    # boolean value indicates weather you should multiply by the number of elements in the orbit
     plot.decompose_modules(n,m,False)
+    plot.plot()
+
+def plotting_demo_Ndlambda_sorted():
+    # When does this slow down?
+    # n = m = 11 runs but slowlish
+    # n = m = 12 runs but slower
+    # n = m = 13 runs but even slower
+    n = 10
+    m = 10
+
+    plot = Plot()
+
+    # boolean value indicates weather you should multiply by the number of elements in the orbit
+    plot.decompose_modules(n,m,False)
+    plot.sort_by_total()
     plot.plot()
 
 def plotting_demo_saving_loading():
@@ -96,7 +111,11 @@ def plotting_demo_saving_loading():
 
     plot1 = Plot.load("demo.npz")
 
+#################
+# Cyclic Decomp #
+#################
 
+#TODO add in demos for cyclic decomposition class - useful for random walks based on convolution
 
 def cyclic_decomp_demo():
     """

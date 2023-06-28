@@ -6,12 +6,13 @@ This is a file for writing bad code quickly to find answers.
 Worry about making things modular later - just write code.
 """
 
+import sympy as sp
 
 from Parking import *
-from TestData import * 
-import sympy as sp
 from Plotting import * 
+from CyclicDecomp import *
 
+from TestData import * 
 np.set_printoptions(suppress=True, precision=4)
 
 """
@@ -228,5 +229,53 @@ def build_new_basis(n, m):
                         from the new basis back to the original basis
     """
 
+###########
+# June 22 #
+###########
+def test_convolve():
+    sin = CnmStat(7,7,np.kron(np.kron(np.kron(np.kron(np.kron(np.kron([1,.5,0,0,0,0,.5], [1/7]*7), [1/7]*7),[1/7]*7),[1/7]*7),[1/7]*7),[1/7]*7), "fourier")
+    
+    stats = IterateStats(7,7)
+    stats.iterate()
+    
+    test = CnmStat(7,7)
+    test.set_stat(stats.total_disp)
+    
+    return test.convolve(sin)
 
-        
+###########
+# June 27 #
+###########
+
+def random_walk(n,m,circular = True, trials = 1000, starting_distribution = None, steps = 100):
+    """
+    inputs:
+        n - number of spots
+        m - number of cars
+        circular - circular parking or not
+        trials - number of trials to run
+        starting_distribution - a function which takes in n,m,circular and returns a preference list
+        steps - number of steps of random walk to take
+    """
+    if starting_distribution == None:
+        starting_distribution = lambda m,n,circular: Park(np.ones(m, int), n, circular = circular)
+    
+    parking_res = [None]*trials
+    for i in range(trials):
+        park = starting_distribution(m,n,circular)
+        park.walk(steps)
+        parking_res[i] = park
+    return parking_res
+
+def plot_stat(parking, stat):
+    """
+    Given a list of preference lists, plots a histogram of the statistic of interst
+    inputs:
+        parking - array of Park objects
+        stat - statistic of interest
+    """
+    if stat == None:
+        stat = lambda park: park.defect()
+    data = list(map(stat, parking))
+    plt.hist(data, bins = np.arange(-0.5, max(data)+0.6, 1))
+    plt.show()

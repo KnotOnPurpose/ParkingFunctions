@@ -4,13 +4,7 @@ Email: abown@hmc.edu
 Summer 2023
 Parking Function Variation Calculations
 
-TODO 
-Modify code to optimize:
-    include a variable self.parked - tells if the full parking process has happened
-    include the trick of sorting the cars and taking the max difference of index and preference
-    idk how much of a speed up that is - O(n^2) worst case to O(nlog n), but
-    I think expected runtime of parking is better than O(n^2)
-
+TODO clean up documentation
 
 TODO
 code structure wise, it would be good to pull the statistics calculating stuff from plotting
@@ -20,18 +14,13 @@ and just use the calculate statistics object for all of that.
 import random
 import numpy as np
 
-class SampleStats:
-    pass
-
 class IterateStats:
     """
     This is an object which calculates a lot of useful statistics all at once
     TODO add an option to sample/record counts which is more geared towards plotting
     Because it would be good for all of the calculating statistics to happen in the same place
-    
-    ok ok thoughts on code strucutre
-    initialize with n,m,circular,sample
 
+    TODO finish writing out documentation descriptions
     variables:
     settings
     self.n
@@ -40,8 +29,19 @@ class IterateStats:
     self.sample - either None or a number
 
     calculated stuff
-    self.displacement_counts - row is displacement, col is pref list. ex lucky is row 0
-    
+
+    Graded kind of stats
+    self.disp_i - row is displacement, col is pref list. ex lucky is row 0
+    self.wants_k - 
+    self.lel_i - 
+
+    Single Stats
+    self.max_disp - 
+    self.total_disp - 
+    self.repeats -
+    self.defect -
+    self.longest_prime -
+    self.last_start_point - 
 
     methods:
     calculate_all() - for when you really just want to calculate all the things
@@ -49,8 +49,6 @@ class IterateStats:
 
     get_graded(stat, graded_by) - useful for plotting 
                                 - returns array of counts AND 
-
-
     """
     def __init__(self, n, m = None, circular = True):
         """
@@ -60,32 +58,92 @@ class IterateStats:
         self.m = m or n
         self.circular = circular
 
-        self.displacement_counts = None
-        self.total_disp = None
-        
-    def iterate_displacement(self):
+        # Graded stats
+        self.disp_i = np.zeros((self.m, self.n**self.m), int)
+        self.wants_k = np.zeros((self.n, self.n**self.m), int)
+        self.lel_i = np.zeros((self.m, self.n**self.m), int)
+        self.passed_i = np.zeros((self.m, self.n**self.m), int)
+
+        # single stats
+        self.max_disp = np.zeros(self.n**self.m, int)
+        self.total_disp = np.zeros(self.n**self.m, int)
+        self.repeats = np.zeros(self.n**self.m, int)
+        self.defect = np.zeros(self.n**self.m, int) 
+        self.longest_prime = np.zeros(self.n**self.m, int)
+        self.last_start_point = np.zeros(self.n**self.m, int)
+
+        #TODO could add more stats derived from resulting permutation
+
+    def iterate(self):
         """
-        Calculates displacement_counts
+        Calculates displacement_counts and total_disp
         """
-        self.displacement_counts = np.zeros((self.m, self.n**self.m), int)
         park = Park([1] * self.m, self.n, circular = self.circular)
 
         for i in range(self.n**self.m):
             t = 0
             for j in range(self.m):
-                cnt = park.displacement.count(j)
-                self.displacement_counts[j][i] = cnt
-                t += cnt
-                if cnt == self.m:
-                    break
+                self.disp_i[j][i] = park.displacement.count(j)
+                self.wants_k[j][i] = park.cars.count(j)
+                self.lel_i[j][i] = park.cars.count(park.cars[j])
+                self.passed_i[j][i] = park.passed.count(j)
+                t += self.disp_i[j][i]
+                if t == self.m and self.max_disp[i] == 0:
+                    self.max_disp[i] = j
+            for j in range(self.m,self.n):
+                self.wants_k[j][i] = park.cars.count(j)
+            self.defect[i] = park.defect()
+            self.repeats[i] = park.repeats()
+            self.longest_prime[i] = max(park.prime_lengths())
+            self.last_start_point[i] = max(park.start_points)
             park.next()
 
-        self.total_disp = np.transpose(np.matrix.transpose(self.displacement_counts).dot(np.arange(len(self.m))))    
+        self.total_disp = np.transpose(np.matrix.transpose(self.disp_i).dot(np.arange(self.m))) 
+
+    def get_graded():
+        """
+        TODO - would be useful for plots
+        """   
+    
+    """ Tested a different way of iterating. it was slower.
+    def iterate2(self):
+        self.total_disp = np.zeros([self.n]*self.m)
+        self.displacement_counts = np.zeros((self.m, self.n**self.m), int)
+
+        i = 0
+        for idx, x in np.ndenumerate(self.total_disp):
+            park = Park(idx, zero_index=True)
+            for j in range(self.m):
+                self.displacement_counts[j][i] = park.displacement.count(j)
+            i += 1
+    """
 
 class Park:
-    def __init__(self, cars: list, n = None, circular = False):
-        """
+    """
+    Variables:
+
+    cars - a list of Car objects capturing the preference of each car
+    
+    lot - the result of the parking process
+    
+    displacement - the displacement of each car during the parking process
+    
+    passed - the nunmber of cars which attempted to park in the given spot
+    
+    break_points - the points in the list which are break points (occupied by a car, but no other car tries to park there)
+    
+    start_points - the start point corresponding to a given break point. 
+                    Note that if the preference type is not circular, the number of start points could be 1 larger than the number of break points
+    """
+    def __init__(self, cars: list, n = None, circular = False, zero_index = False):
+        """ 
         Park represents an single line of cars trying to park.
+        Inputs:
+        cars
+        n
+        circular
+        zero_index - if this is set to true and an array of integers is provided for the cars, the array is treated as 0 indexed
+
         Variables:
 
         self.n - the number of parking spots
@@ -98,15 +156,19 @@ class Park:
         self.lot - the eventual conetents of the parking lot
         """
         self.n = n or len(cars)
+        self.circular = circular
 
         self.cars = []
         if type(cars[0]) == type(Car(1)): 
-            #TODO do this correctly - 97% sure that this is a shortcut, not the right way to do this
             self.cars = cars
         elif type(cars[0]) == int or type(cars[0]) == np.int_:
             self.cars = []
             for i in range(len(cars)):
-                self.cars.append(Car(cars[i], circular = circular))
+                if zero_index:
+                    self.cars.append(Car(cars[i] + 1, circular = circular))
+                else:
+                    self.cars.append(Car(cars[i], circular = circular))
+        assert self.cars != []
 
         self.displacement = []
         self.park()
@@ -115,14 +177,43 @@ class Park:
         """
         Based on the list self.cars, updates self.lot to be the contents of the lot after all of the cars park in sequence
         """
+        empty = [None] * self.n
+
         self.lot = [None] * self.n
+        self.passed = [0] * self.n
         self.displacement = []
         for i in range(len(self.cars)):
             s = self.cars[i].spot(self.lot)
             if s != None:
                 self.lot[s] = i + 1
             self.displacement.append(self.cars[i].displacement)
+            for j in range(self.cars[i].spot(empty), s if s != None else self.n):
+                self.passed[j%self.n] += 1
+        
+        # break points are where the parking lot is not empty and passed is 0
+        self.break_points = np.array([i+1 for i  in range(self.n) if self.passed[i] == 0 and self.lot[i] != None], int)
+        # start points are the first occupied spot after previous break point
+        if not self.circular and self.lot[-1] != None and self.passed[-1] != 0:
+            self.start_points = np.roll(np.append(self.break_points, self.n), 1)
+        else:
+            self.start_points = np.roll(self.break_points, 1)
+        
+        if self.circular:
+            if self.start_points[0] == self.n:
+                self.start_points[0] = 0
+        else:
+            self.start_points[0] = 0
+        for i in range(len(self.start_points)):
+            while self.lot[self.start_points[i]] == None:
+                self.start_points[i] += 1
+                if self.circular:
+                    self.start_points[i] = self.start_points[i] % len(self.lot)
+        self.start_points = self.start_points + 1 # to one index for math reasons
+        
 
+    ##################################
+    # METHODS FOR GETTING STATISTICS #
+    ##################################
     def displacement_moment(self, i = 1):
         """
         Returns the i-th moment for the distribution of displacements
@@ -135,36 +226,68 @@ class Park:
         """
         return sum(self.displacement)
 
+    def disp_i(self, i):
+        """
+        Returns the number of cars displaced exactly i
+        """
+        return self.displacement.count(i)
+
     def lucky(self):
         """
         Returns the number of lucky cars
         """
-        return len(list(filter(lambda x: x == 0, self.displacement)))
-
-    def parkability(self):
-        """
-        Returns the number of cars parked
-        """
-        return len(list(filter(lambda x: x != None, self.lot)))
+        return self.disp_i(0)
     
     def defect(self):
         """
         Returns the defect associated with the preference list
         """
-        return len(self.cars) - self.parkability()
+        #assert self.passed[-1] == len(self.cars) - len(list(filter(lambda x: x != None, self.lot)))
+        if self.circular:
+            return 0
+        else:
+            return self.passed[-1]
     
-    def apply_wr(self, L : list, s, type):
+    def prime_lengths(self):
+        """
+        Returns the lengths of the prime segments composing the preference list
+        Note that the sum of the components will always be $m$ (the number of cars)
+        """
+        if len(self.break_points) == len(self.start_points):
+            return (self.break_points - self.start_points)%self.n + 1
+        else:
+            arr = (self.break_points - self.start_points[:-1]) + 1
+            return np.append(arr, len(self.cars) - sum(arr))
+
+    def repeats(self):
+        """
+        Returns the number of repeats in the preference list
+        """
+        cnt = 0
+        for i in range(len(self.cars) - 1):
+            if self.cars[i].preference == self.cars[i+1].preference:
+                cnt += 1
+        return cnt
+
+
+    #########################################
+    # METHODS FOR MODIFYING PREFERENCE LIST #
+    #########################################
+    def apply_wr(self, L : list, s = None, type = "C_n"):
         """
         Returns a new park object corresponding to the wreath product element $type \wr S_n$ applied to the current park item 
         L : list of group elements of the type given
         s : an element of $S_n$ in one line notation represented as an array of integers
         type: either $S_n$ or $C_n$
         """
+        if s == None:
+            s = list(range(len(self.cars)))
 
         new_cars = [None] * len(self.cars)
         for i in range(len(self.cars)):
-            new_cars[s[i] - 1] = self.cars[i].apply_group(L[s[i] - 1], type)
-        return Park(new_cars, self.n)
+            new_cars[s[i] - 1] = self.cars[i].apply_group(L[s[i] - 1], type, self.n)
+        self.cars = new_cars
+        self.park()
     
     def next(self):
         """
@@ -183,19 +306,82 @@ class Park:
                 break
         self.park()
 
+    def walk(self, steps):
+        """
+        Does a random walk with the number of steps indicated
+        Input: 
+            steps - the number of steps to take
+            TODO - modify the arguments to match conversation with Prof O:
+                    Would be nice to be able to give a distribution for each parking spot, 
+                    resulting distribution would be the tensor of all of them
+                    Could also be interesting to have a couple of options
+                      that don't necessarily play nice with fourier transform, but take nice discrete steps
+        Result:
+            modifies the object to be a new object after taking steps steps.
+        """
+        indices = range(len(self.cars))
+        for i in range(steps):
+            ind = np.random.choice(indices)
+            self.cars[ind] = self.cars[ind].apply_group(np.random.choice([-1,1]), "C_n", self.n)
+        self.park()
+
     def __str__(self):
         return str([str(c) for c in self.cars]) + " -> " + str(self.lot)
     
     @staticmethod
-    def random(n, m):
+    def random(n, m, circular = False):
         """
         Input: 
             n - number of spots
             m - number of cars
         Output: 
-            Returns a random car with single spot prefereneces
+            Returns a random preference list with single spot prefereneces
         """
-        return Park(np.random.randint(1,n + 1, m))
+        return Park(np.random.randint(1,n + 1, m), n, circular)
+
+    @staticmethod
+    def random_pf(n,m):
+        """
+        Input: 
+            n - number of spots
+            m - number of cars
+        Output: 
+            Returns a random parking function with single spot prefereneces
+        """
+        intermediate = Park.random(n+1,m, circular = True)
+        empty = [i for i in range(n + 1) if intermediate.lot[i] == None]
+        end = np.random.choice(empty)
+        return Park(np.array([(car.preference-end-1)%(n+1) for car in intermediate.cars], int))
+    
+    @staticmethod
+    def random_ppf(n):
+        """
+        Input: 
+            n - number of spots
+            m - number of cars
+        Output: 
+            Returns a random prime parking function with single spot prefereneces
+        """
+        intermediate = Park.random(n-1,n, circular = False)
+        for i in range(n):
+            if intermediate.defect() == 1 and len(intermediate.prime_lengths()) == 1:
+                break
+            intermediate.apply_wr([1]*n)
+        return Park(intermediate.cars, n, False)
+
+    @staticmethod
+    def random_def(d):
+        """
+        Input: 
+            n - number of spots
+            m - number of cars
+        Output: 
+            Returns a random defect d preference list with single spot prefereneces
+            #TODO Actually ready to write this method now
+        """
+        if d == 0:
+            return Park.random_pf()
+        pass #TODO
 
 class Car:
     def __init__(self, preference, pref_type = "default", circular = False):
