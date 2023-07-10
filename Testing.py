@@ -11,9 +11,10 @@ import sympy as sp
 from Parking import *
 from Plotting import * 
 from CyclicDecomp import *
+from matplotlib.widgets import Slider, Button
 
 from TestData import * 
-np.set_printoptions(suppress=True, precision=4)
+np.set_printoptions(suppress=True, precision=4, linewidth = 1000)
 
 """
 #TODO 
@@ -279,3 +280,149 @@ def plot_stat(parking, stat):
     data = list(map(stat, parking))
     plt.hist(data, bins = np.arange(-0.5, max(data)+0.6, 1))
     plt.show()
+
+def get_ind(n,m,c):
+    """
+    Gets an indicator function which is 1 on prefernce lists where the ith car is lucky
+    """
+    ind = []
+    park = Park([1] * m, n, circular = True)
+    for i in range(n**m):
+        if park.displacement[c] == 0:
+            ind.append(1)
+        else:
+            ind.append(0)
+        park.next()
+    return ind
+
+##########
+# July 3 #
+##########
+
+def random_sin_walk():
+    """
+    inputs:
+        n - number of spots
+        m - number of cars
+        circular - circular parking or not
+        trials - number of trials to run
+        starting_distribution - a function which takes in n,m,circular and returns a preference list
+        steps - number of steps of random walk to take
+    """
+    n = 6
+    m = 6
+    circular = True
+    t_max = 10
+
+    dat = np.zeros(n**m)
+    dat[0] = 1
+    d = CnmStat(n,m, dat, arr_type="stat")
+    w = CnmStat.cos(n,m)
+    stats = IterateStats(n,m, circular)
+    s = CnmStat(n,m, stats.disp_i[0])
+    
+    data = [d.expected_val(s)]
+    for i in range(t_max):
+        d = d.convolve(w)
+        print(np.sum(d.stat))
+        data.append(d.expected_val(s))
+        
+    print(data)
+
+    plt.plot(data)
+    plt.show()
+
+def random_sin_walk_interactive():
+    """
+    inputs:
+        n - number of spots
+        m - number of cars
+        circular - circular parking or not
+        trials - number of trials to run
+        starting_distribution - a function which takes in n,m,circular and returns a preference list
+        steps - number of steps of random walk to take
+    """
+    n = 6
+    m = 6
+    circular = True
+    
+    t_max = 10
+
+    dat = np.zeros(n**m)
+    dat[0] = 1
+    d = CnmStat(n,m, dat, arr_type="stat")
+    w = CnmStat.cos(n,m)
+    stats = IterateStats(n,m, circular)
+    s = CnmStat(n,m, stats.disp_i[0])
+
+    # The parametrized function to be plotted
+    def f(x, steps):
+        dwt = CnmStat(n,m)
+        dwt.set_fourier(d.fourier * (w.fourier**int(steps)))
+    
+        ans = np.zeros(len(x))
+        for i in range(len(ans)):
+            ans[i] = sum(dwt.stat[s.stat == x[i]])
+        return ans
+
+    x = np.arange(0, n + 1, 1, int)
+
+    # Define initial parameters
+    # https://matplotlib.org/stable/gallery/widgets/slider_demo.html
+    init_steps = 0
+
+    # Create the figure and the line that we will manipulate
+    fig, ax = plt.subplots()
+    line, = ax.plot(x, f(x, init_steps), lw = 1)
+    ax.set_xlabel('Statistic')
+
+    # adjust the main plot to make room for the sliders
+    fig.subplots_adjust(left=0.25, bottom=0.25)
+
+    # Make a horizontal slider to control the frequency.
+    # axfreq = fig.add_axes([0.25, 0.1, 0.65, 0.03])
+    # req_slider = Slider(
+    #    ax=axfreq,
+    #    label='Frequency [Hz]',
+    #    valmin=0.1,
+    #    valmax=30,
+    #    valinit=init_frequency,
+    #)
+
+    # Make a vertically oriented slider to control the amplitude
+    axsteps = fig.add_axes([0.1, 0.25, 0.0225, 0.63])
+    steps_slider = Slider(
+        ax=axsteps,
+        label="Amplitude",
+        valmin=0,
+        valmax=20,
+        valinit=init_steps,
+        valstep=1,
+        orientation="vertical"
+    )
+
+
+    # The function to be called anytime a slider's value changes
+    def update(val):
+        line.set_ydata(f(x, steps_slider.val))
+        fig.canvas.draw_idle()
+
+
+    # register the update function with each slider
+    #freq_slider.on_changed(update)
+    steps_slider.on_changed(update)
+
+    # Create a `matplotlib.widgets.Button` to reset the sliders to initial values.
+    resetax = fig.add_axes([0.8, 0.025, 0.1, 0.04])
+    button = Button(resetax, 'Reset', hovercolor='0.975')
+
+
+    def reset(event):
+        steps_slider.reset()
+    button.on_clicked(reset)
+
+    plt.show()
+    
+
+
+

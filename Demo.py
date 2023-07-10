@@ -18,6 +18,14 @@ from CyclicDecomp import *
 # Parking Demos #
 #################
 
+#TODO show how to work with IterateStats
+def iterate_stats_demo():
+    #initializes statistic - will pull from data if possible, otherwise iterates through
+    stats = IterateStats(6,6,False)
+
+    #runs the iterative algorithm and saves the result
+    IterateStats.update_file("*filename*")
+
 ##############
 # Plot Demos #
 ##############
@@ -111,6 +119,12 @@ def plotting_demo_saving_loading():
 
     plot1 = Plot.load("demo.npz")
 
+def iteractive_plot_demo():
+    ip = InteractivePlot(7,7,True)
+    ip.plot_mean()
+    ip.slider_plot()
+    #TODO show how to change statistic of interest
+
 #################
 # Cyclic Decomp #
 #################
@@ -120,4 +134,12 @@ def plotting_demo_saving_loading():
 def cyclic_decomp_demo():
     """
     """
-    pass
+    stats = IterateStats(5,5,True)
+    stat = CnmStat(5,5, stats.disp_i[0])
+    stat.print_by_value()           # Prints by values of fourier coefficients
+    stat.print_by_value("stats")    # Prints by values of statistic
+    stat.print_by_value("basis")    # Prints by values of modified basis
+    stat.average_Sm()
+    stat.print_by_value("stats")
+
+

@@ -1,9 +1,3 @@
-"""
-Author: Jasper Bown 
-Email: abown@hmc.edu
-Summer 2023
-This is an assortment of arrays and explicit calculations for small values
-"""
 
 import numpy as np
 
@@ -34,11 +28,37 @@ def expected(p):
 repeats = [2,1,1,0,1,0,0,0,1,1,0,0,1,2,1,0,0,1,1,0,0,0,1,0,1,1,2]
 lel =     [3,2,2,2,1,1,2,1,1,21,2,1,2,3,2,1,2,1,1,1,2,1,1,2,2,2,3]
 ones =    [3,2,2,2,1,1,2,1,1,2,1,1,1,0,0,1,0,0,2,1,1,1,0,0,1,0,0]
-skyscrapers = [1,1,1,1,1,1,2,2,2,0,0,0,0,0,0,2,2,2,2,2,2,3,3,3,2,2,2]
+skyscrapers = [1,1,1,1,1,1,2,2,2,1,1,1,1,1,1,2,2,2,2,2,2,3,3,3,2,2,2]
 des = [0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,1,1,1]
 
 total_displacement = 1 * disp1 + 2 * disp2
 max_displacement = np.array([(0 if disp1[i] == 0 else 1) if disp2[i] == 0 else 2 for i in range(27)])
+
+# July 6th
+average_Sm_orbits = np.zeros((27,27))
+def ave(arr, a):
+    for x in a:
+        arr[x][a] = np.ones(len(a))/len(a)
+# 000
+ave(average_Sm_orbits, [0])
+# 100
+ave(average_Sm_orbits, [1,3,9])
+# 200
+ave(average_Sm_orbits, [3,6,18])
+# 110
+ave(average_Sm_orbits, [4,12,10])
+# 210 
+ave(average_Sm_orbits, [5, 7, 11, 15, 19, 21])
+# 220
+ave(average_Sm_orbits, [4,24,20])
+# 111
+ave(average_Sm_orbits, [13])
+# 211
+ave(average_Sm_orbits, [14,16,22])
+# 221
+ave(average_Sm_orbits, [17,25,23])
+# 222
+ave(average_Sm_orbits, [26])
 
 # June 14th
 # Change of basis computed by hand from character basis to new basis

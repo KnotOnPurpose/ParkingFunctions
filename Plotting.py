@@ -12,8 +12,10 @@ TODO - list of improvements
 """
 
 from Parking import * 
+from CyclicDecomp import *
 
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider, Button
 import numpy as np
 import os
 
@@ -444,3 +446,92 @@ class Plot:
         for part in arr:
             ans = ans/np.math.factorial(part)
         return int(ans)
+
+
+
+class InteractivePlot:
+
+    def __init__(self, n, m, circular = None):
+        self.n = n
+        self.m = m or n
+        self.circular = circular
+    
+        if circular == None:
+            self.circular = True
+
+        self.stats = IterateStats(self.n, self.m, self.circular)
+
+        dat = np.zeros(self.n**self.m)
+        dat[0] = 1
+        self.start = CnmStat(self.n,self.m, dat, arr_type="stat")
+        
+        self.walk = CnmStat.cos(self.n,self.m) 
+        self.walk.distribution()
+
+        self.s = CnmStat(self.n,self.m, self.stats.disp_i[0]) #lucky
+
+    def slider_plot(self):
+        # https://matplotlib.org/stable/gallery/widgets/slider_demo.html
+        def f(x, steps):
+            dwt = CnmStat(self.n,self.m)
+            dwt.set_fourier(self.start.fourier * (self.walk.fourier**int(steps)))
+        
+            ans = np.zeros(len(x))
+            for i in range(len(ans)):
+                ans[i] = sum(dwt.stat[self.s.stat == x[i]])
+            return ans
+
+        x = np.arange(0, self.n + 1, 1, int)
+
+        # Define initial parameters
+        init_steps = 0
+
+        # Create the figure and the line that we will manipulate
+        fig, ax = plt.subplots()
+        line, = ax.plot(x, f(x, init_steps), lw = 1)
+        ax.set_xlabel('Statistic')
+
+        # adjust the main plot to make room for the sliders
+        fig.subplots_adjust(left=0.25, bottom=0.25)
+
+        # Make a vertically oriented slider to control the amplitude
+        axsteps = fig.add_axes([0.1, 0.25, 0.0225, 0.63])
+        steps_slider = Slider(
+            ax=axsteps,
+            label="Amplitude",
+            valmin=0,
+            valmax=20,
+            valinit=init_steps,
+            valstep=1,
+            orientation="vertical"
+        )
+
+        # The function to be called anytime a slider's value changes
+        def update(val):
+            line.set_ydata(f(x, steps_slider.val))
+            fig.canvas.draw_idle()
+
+        # register the update function with each slider
+        steps_slider.on_changed(update)
+
+        # Create a `matplotlib.widgets.Button` to reset the sliders to initial values.
+        resetax = fig.add_axes([0.8, 0.025, 0.1, 0.04])
+        button = Button(resetax, 'Reset', hovercolor='0.975')
+
+        def reset(event):
+            steps_slider.reset()
+        button.on_clicked(reset)
+
+        plt.show()
+        
+    def plot_mean(self, max_steps):
+        dwt = CnmStat(self.n,self.m)
+        dwt.set_fourier(self.start.fourier)
+        data = [self.start.expected_val(self.s)]
+        for i in range(max_steps):
+            dwt = dwt.convolve(self.walk)
+            print(np.sum(dwt.stat))
+            data.append(dwt.expected_val(self.s))
+        
+        plt.plot(data)
+        plt.show()

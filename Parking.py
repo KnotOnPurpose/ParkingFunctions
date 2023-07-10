@@ -4,8 +4,6 @@ Email: abown@hmc.edu
 Summer 2023
 Parking Function Variation Calculations
 
-TODO clean up documentation
-
 TODO
 code structure wise, it would be good to pull the statistics calculating stuff from plotting
 and just use the calculate statistics object for all of that.
@@ -13,43 +11,45 @@ and just use the calculate statistics object for all of that.
 
 import random
 import numpy as np
+import os.path
 
 class IterateStats:
     """
     This is an object which calculates a lot of useful statistics all at once
-    TODO add an option to sample/record counts which is more geared towards plotting
-    Because it would be good for all of the calculating statistics to happen in the same place
-
-    TODO finish writing out documentation descriptions
-    variables:
     settings
-    self.n
-    self.m
-    self.circular - boolean
-    self.sample - either None or a number
+        \\
+        self.n - the number of spots\\
+        self.m - the number of cars\\
+        self.circular - boolean to indicate one way parking or circular linear probing\\
+        self.sample - either None or a number
+    ___________________________________________
+    calculated stuff:
 
-    calculated stuff
-
-    Graded kind of stats
-    self.disp_i - row is displacement, col is pref list. ex lucky is row 0
-    self.wants_k - 
-    self.lel_i - 
-
-    Single Stats
-    self.max_disp - 
-    self.total_disp - 
-    self.repeats -
-    self.defect -
-    self.longest_prime -
-    self.last_start_point - 
-
-    methods:
-    calculate_all() - for when you really just want to calculate all the things
-                    - also a good place to look for all of the things
-
-    get_graded(stat, graded_by) - useful for plotting 
-                                - returns array of counts AND 
+    Graded kind of stats \\
+    self.disp_i - number of cars displaced by row. ex lucky is row 0 \\
+    self.wants_k - numper of preferences matching row. Ex ones is row 0 \\
+    self.lel_i - number of spots passed by row cars. ex lucky is row 0 
+    
+    Single Stats \\
+    self.max_disp - max displacement \\
+    self.total_disp - total displacement/area \\
+    self.repeats - number of preferences the same as the previous\\
+    self.defect - number of cars which cannot park \\        
+    self.longest_prime - length of the longest prime segment \\        
+    self.last_start_point - the location of the last prime segment
     """
+    
+    """
+    TODO 
+    - add an option to sample/record counts which is more geared towards plotting
+        because it would be good for all of the calculating statistics to happen in the same place
+
+    TODO 
+    could add more stats derived from resulting permutation or other stats
+
+    """
+    save_dir = "saved/IterateStats/"
+
     def __init__(self, n, m = None, circular = True):
         """
         Upon creating this object, many useful statistics are calculated
@@ -60,9 +60,10 @@ class IterateStats:
 
         # Graded stats
         self.disp_i = np.zeros((self.m, self.n**self.m), int)
-        self.wants_k = np.zeros((self.n, self.n**self.m), int)
         self.lel_i = np.zeros((self.m, self.n**self.m), int)
         self.passed_i = np.zeros((self.m, self.n**self.m), int)
+        self.wants_k = np.zeros((self.n, self.n**self.m), int)
+        self.passed_k = np.zeros((self.n, self.n**self.m), int)
 
         # single stats
         self.max_disp = np.zeros(self.n**self.m, int)
@@ -72,7 +73,97 @@ class IterateStats:
         self.longest_prime = np.zeros(self.n**self.m, int)
         self.last_start_point = np.zeros(self.n**self.m, int)
 
-        #TODO could add more stats derived from resulting permutation
+        if os.path.exists(self.path()):
+            print(". . . loading from file . . .")
+            self.load()
+        else:
+            print(". . . iterating . . .")
+            self.iterate()
+            self.save()
+
+    ##############################
+    # Methods relating to saving #
+    ##############################
+
+    def save(self):
+        """
+        Saves the important data to the "saved" folder with the given file name
+        Inputs: file_name - the name of the file within the saved folder
+        """
+        print(". . . saving . . .")
+        np.savez(self.path(), 
+                 disp_i = self.disp_i,
+                 lel_i = self.lel_i,
+                 passed_i = self.passed_i,
+                 wants_k = self.wants_k,
+                 passed_k = self.passed_k,
+                 max_disp = self.max_disp,
+                 total_disp = self.total_disp,
+                 repeats = self.repeats,
+                 defect = self.defect,
+                 longest_prime = self.longest_prime,
+                 last_start_point = self.last_start_point,
+                 other_data = np.array([self.n, self.m, self.circular])
+                 )
+        
+    def load(self):
+        """
+        Loads the data from a npz file in the saved folder
+        Inputs: file_name - the name of the file to be loaded
+        Outputs: an object with the loaded plot parameters
+        """
+        load_data = np.load(self.path(), allow_pickle=True)
+
+        try:
+            self.disp_i = load_data["disp_i"]
+        except:
+            print("disp_i not loaded")
+        try:
+            self.lel_i = load_data["lel_i"]
+        except:
+            print("lel_i not loaded")
+        try:
+            self.passed_i = load_data["passed_i"]
+        except:
+            print("passed_i not loaded")
+        try:
+            self.wants_k = load_data["wants_k"]
+        except:
+            print("wants_k not loaded")
+        try:
+            self.passed_k = load_data["passed_k"]
+        except:
+            print("passed_k not loaded")
+        try:
+            self.max_disp = load_data["max_disp"]
+        except:
+            print("max_disp not loaded")
+        try:
+            self.total_disp = load_data["total_disp"]
+        except:
+            print("total_disp not loaded")
+        try:
+            self.repeats = load_data["repeats"]
+        except:
+            print("repeats not loaded")
+        try:
+            self.defect = load_data["defect"]
+        except:
+            print("defect not loaded")
+        try:
+            self.longest_prime = load_data["longest_prime"]
+        except:
+            print("longest_prime not loaded")
+        try:
+            self.last_start_point = load_data["last_start_point"]
+        except:
+            print("last_start_point not loaded")
+
+    def path(self):
+        """
+        returns the path name for the object to save/load
+        """
+        return self.save_dir + "n" + str(self.n) + "m" + str(self.m) + ("c" if self.circular else "") + ".npz"
 
     def iterate(self):
         """
@@ -84,8 +175,8 @@ class IterateStats:
             t = 0
             for j in range(self.m):
                 self.disp_i[j][i] = park.displacement.count(j)
-                self.wants_k[j][i] = park.cars.count(j)
-                self.lel_i[j][i] = park.cars.count(park.cars[j])
+                self.wants_k[j][i] = park.pref(j+1)
+                self.lel_i[j][i] = park.lel(j+1)
                 self.passed_i[j][i] = park.passed.count(j)
                 t += self.disp_i[j][i]
                 if t == self.m and self.max_disp[i] == 0:
@@ -96,15 +187,62 @@ class IterateStats:
             self.repeats[i] = park.repeats()
             self.longest_prime[i] = max(park.prime_lengths())
             self.last_start_point[i] = max(park.start_points)
+            self.passed_k[:,i] = park.passed
             park.next()
 
         self.total_disp = np.transpose(np.matrix.transpose(self.disp_i).dot(np.arange(self.m))) 
 
-    def get_graded():
+    #########################
+    # Related stats to get  #
+    #########################
+
+    def get_graded(self, stat, grading = None):
         """
-        TODO - would be useful for plots
-        """   
+        TODO - test and integrate with plotting
+        """
+        if type(grading) == type(None):
+            grading = self.defect
+        
+        categories = np.sort(np.unique(grading))
+        labels = np.sort(np.unique(stat))
+
+        cnts = np.zeros((len(categories), len(labels)))
+
+        for i in range(len(stat)):
+            cnts[np.searchsorted(categories, grading[i]),np.searchsorted(labels, stat[i])] += 1
+
+        return categories, labels, cnts 
     
+    
+    @staticmethod
+    def update_files():
+        """runs the iterative function on all files"""
+        for filename in os.listdir(IterateStats.save_dir):
+            print(filename)
+            IterateStats.update_file(filename)
+    
+    @staticmethod
+    def update_file(filename):
+        """
+        updated specified file
+        """
+        f = os.path.join(IterateStats.save_dir, filename)
+        if os.path.isfile(f):
+            i = filename.index("n")
+            j = filename.index("m")
+            circ = True
+            try:
+                k = filename.index("c")
+            except:
+                circ = False
+                k = filename.index(".")
+    
+            n = int(filename[i + 1:j])
+            m = int(filename[j + 1:k])
+            stats = IterateStats(n,m,circ)
+            stats.iterate()
+            stats.save()
+
     """ Tested a different way of iterating. it was slower.
     def iterate2(self):
         self.total_disp = np.zeros([self.n]*self.m)
@@ -210,9 +348,8 @@ class Park:
                     self.start_points[i] = self.start_points[i] % len(self.lot)
         self.start_points = self.start_points + 1 # to one index for math reasons
         
-
     ##################################
-    # METHODS FOR GETTING STATISTICS #
+    # METHODS FOR GTTING STATISTICS #
     ##################################
     def displacement_moment(self, i = 1):
         """
@@ -269,6 +406,17 @@ class Park:
                 cnt += 1
         return cnt
 
+    def lel(self,i = 1):
+        """
+        returns number of cars whose prefered spot is the same as the ith car
+        """
+        return len(list(filter(lambda x: x.preference == self.cars[i-1].preference , self.cars)))
+
+    def pref(self,i = 1):
+        """
+        returns number of cars whose prefered spot is i
+        """
+        return len(list(filter(lambda x: x.preference == i , self.cars)))
 
     #########################################
     # METHODS FOR MODIFYING PREFERENCE LIST #
@@ -383,6 +531,14 @@ class Park:
             return Park.random_pf()
         pass #TODO
 
+    @staticmethod
+    def shuffle(p1, p2):
+        """
+        #TODO - useful for random_def
+        Returns the shuffle of parking function 1 with parking function 2. 
+        I believe shuffle was in both meyles,harris2023 and maybe another paper? 
+        """
+
 class Car:
     def __init__(self, preference, pref_type = "default", circular = False):
         """
@@ -494,3 +650,20 @@ class Car:
 
     def __str__(self) -> str:
         return str(self.preference)
+
+class IterDefect():
+    def __init__(self, d, n, m = None):
+        self.d = d
+        self.n = n
+        self.m = m or n
+    
+    def __iter__(self):
+        return self
+    
+    def __next__(self):
+        if self.n <= 20:
+            x = self.n
+            self.n += 1
+            return x
+        else:
+            raise StopIteration
