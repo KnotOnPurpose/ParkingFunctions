@@ -301,7 +301,7 @@ class CnmStat:
         self.distribution()
         vals = [ idx for idx,x in np.ndenumerate(self.stat)]
         index = np.random.choice(np.arange(len(vals)), p=np.reshape(self.stat, self.n**self.m))
-        return vals[index]
+        return vals[index] 
 
     def plot(self):
         """
