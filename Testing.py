@@ -423,6 +423,13 @@ def random_sin_walk_interactive():
 
     plt.show()
     
+def indicator(n,m,i,d, circular = True):
+    stat = np.zeros(n**m, int)
+    park = Park([1] * m,n, circular)
 
-
+    for ind in range(n**m):
+        if park.displacement[i - 1] == d:
+            stat[ind] = 1
+        park.next()
+    return stat
 

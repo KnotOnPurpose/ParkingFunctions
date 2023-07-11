@@ -28,7 +28,9 @@ class IterateStats:
     Graded kind of stats \\
     self.disp_i - number of cars displaced by row. ex lucky is row 0 \\
     self.wants_k - numper of preferences matching row. Ex ones is row 0 \\
-    self.lel_i - number of spots passed by row cars. ex lucky is row 0 
+    self.lel_i - number of cars whos preference matches that of the ith car\\
+    self.passed_i - number of spots passed by row cars. ex lucky is row 0 
+    self.passed_k - number of spots passed by row cars. ex lucky is row 0 
     
     Single Stats \\
     self.max_disp - max displacement \\
@@ -325,8 +327,8 @@ class Park:
             if s != None:
                 self.lot[s] = i + 1
             self.displacement.append(self.cars[i].displacement)
-            for j in range(self.cars[i].spot(empty), s if s != None else self.n):
-                self.passed[j%self.n] += 1
+            for j in range(self.cars[i].displacement):
+                self.passed[(j + self.cars[i].spot(empty))%self.n] += 1
         
         # break points are where the parking lot is not empty and passed is 0
         self.break_points = np.array([i+1 for i  in range(self.n) if self.passed[i] == 0 and self.lot[i] != None], int)

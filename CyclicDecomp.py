@@ -9,6 +9,7 @@ import numpy as np
 from itertools import permutations
 from functools import reduce
 import matplotlib.pyplot as plt
+import scipy as sc
 
 """
 TODO 
@@ -81,7 +82,7 @@ class CnmStat:
         """
         Prints the type of coefficients desired by thier value.
         """
-        types = ["fourier", "stat", "basis"]
+        types = ["fourier", "stat", "basis", "basis_inv"]
         assert type in types
         if type == types[0]:
             interesting = self.fourier
@@ -89,6 +90,8 @@ class CnmStat:
             interesting = self.stat
         elif type == types[2]:
             interesting, labels = self.new_basis()
+        elif type == types[3]:
+            interesting, labels = self.new_basis(True)
         vals = np.unique(np.around(np.reshape(interesting, self.n**self.m),precision), axis = 0)
 
         total = 0
@@ -106,7 +109,7 @@ class CnmStat:
             print(s + " : ", end = "")
 
             close = np.isclose(interesting, vals[i], atol = 10**(-precision))
-            if type == types[2]:
+            if type in types[2:]:
                 for i in range(len(close)):
                     if close[i]:
                         print(labels[i], end = ", ")
@@ -199,7 +202,7 @@ class CnmStat:
             arr[part] = np.ones(len(part)) * ave
         self.set_stat(arr)
 
-    def new_basis_strs(self):
+    def new_basis_strs(self, inv = False):
         """
         generates a list of n^m sets containing indices for the corresponding sets
         """
@@ -211,9 +214,13 @@ class CnmStat:
             
             s = np.base_repr(ind[0], self.n)
             s = "0"*(self.m - len(s)) + s
-            s = s[::-1]
+            if inv:
+                s = s[::-1]
             
-            perm_strings = np.array(["".join(x)[::-1] for x in permutations(s)])
+            if inv:
+                perm_strings = np.array(["".join(x)[::-1] for x in permutations(s)])
+            else:
+                perm_strings = np.array(["".join(x) for x in permutations(s)])
             used_ind = [int(x, self.n) for x in np.unique(perm_strings)]
             ind = np.setdiff1d(ind, used_ind) # remove used strings from ind
 
@@ -248,7 +255,7 @@ class CnmStat:
                     
             # iterates through and adds things to the answer to be returned
             # removes the extra orbits that would make things linearly dependant
-            strs.append("S_" + str(self.m) + "*" + str(next(iter(arr[0][0]))))
+            strs.append("S_" + str(self.m) + "*" + (str(next(iter(arr[0][0])))[::-1]))
             part.append(arr[0][0])
             for i in range(1, len(arr)):
                 # ith row has (len/(self.m - i)!) 
@@ -263,23 +270,36 @@ class CnmStat:
                         # picks minind to be removed so that the set is linearly independent
                         minind = 0
                         for k in range(len(arr2[j])):
-                            if len(arr2[j][k]) < len(arr2[j][minind]):
-                                minind = k
-                            elif len(arr2[j][k]) == len(arr2[j][minind]):
-                                if next(iter(arr2[j][k])) < next(iter(arr2[j][minind])):
+                            if inv:
+                                # rearranging end of string 
+                                # so beginning of the string matters/is fixed
+                                if not next(iter(arr2[j][k]))[::-1] < next(iter(arr2[j][minind]))[::-1]:
                                     minind = k 
+                            else:
+                                # rearranging first cars. Result will still be reversed.
+                                # so beginning of the string matters/is fixed    
+                                # throws out latest alphabetically from end
+                                if not next(iter(arr2[j][k])) < next(iter(arr2[j][minind])):
+                                    minind = k 
+                                
+                            # old version from 7/10
+                            #if len(arr2[j][k]) < len(arr2[j][minind]):
+                            #    minind = k
+                            #elif len(arr2[j][k]) == len(arr2[j][minind]):
+                            #    if next(iter(arr2[j][k])) < next(iter(arr2[j][minind])):
+                            #        minind = k 
                         # insert into answer which will be returned
                         for k in range(len(arr2[j])):
                             if k != minind:
-                                strs.append("S_" + str(self.m - i) + "*" + str(next(iter(arr2[j][k]))))
+                                strs.append("S_" + str(self.m - i) + "*" + (str(next(iter(arr2[j][k])))[::-1]))
                                 part.append(arr2[j][k])       
         return part, strs
 
-    def new_basis(self):
+    def new_basis(self, inv = False):
         """
         computes the statistic in the modified basis and prints the result
         """
-        basis, s = self.new_basis_strs()
+        basis, s = self.new_basis_strs(inv)
 
         for i in range(len(basis)):
             basis[i] = [int(s, self.n) for s in basis[i]]
@@ -289,7 +309,9 @@ class CnmStat:
             for b in basis[i]:
                 arr[b][i] = 1
 
-        change_basis_matrix = np.linalg.inv(arr)
+        from scipy.sparse import csr_array
+        
+        change_basis_matrix = sc.sparse.csr_array(np.linalg.inv(arr))
         stat_in_new_basis = change_basis_matrix.dot(np.reshape(self.fourier, self.n**self.m))
 
         return stat_in_new_basis, s

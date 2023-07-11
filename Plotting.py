@@ -447,8 +447,6 @@ class Plot:
             ans = ans/np.math.factorial(part)
         return int(ans)
 
-
-
 class InteractivePlot:
 
     def __init__(self, n, m, circular = None):
