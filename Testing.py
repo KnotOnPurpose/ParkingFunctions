@@ -466,3 +466,8 @@ def orbits_involved(stat):
         d[u[index]].add(tuple(s))
 
     return d
+
+def print_dict(d):
+    for x in d:
+        if x != 0:
+            print(x,d[x])
