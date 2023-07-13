@@ -424,6 +424,9 @@ def random_sin_walk_interactive():
     plt.show()
     
 def indicator(n,m,i,d, circular = True):
+    """
+    indicator function for the ith car was displaced $d$
+    """
     stat = np.zeros(n**m, int)
     park = Park([1] * m,n, circular)
 
@@ -433,3 +436,33 @@ def indicator(n,m,i,d, circular = True):
         park.next()
     return stat
 
+def spot_indicator(n,m,i,d, circular = True):
+    #TODO currently just a copy of indicator
+    stat = np.zeros(n**m, int)
+    park = Park([1] * m,n, circular)
+
+    for ind in range(n**m):
+        if park.displacement[i - 1] == d:
+            stat[ind] = 1
+        park.next()
+    return stat
+
+def orbits_involved(stat):
+    """
+    I have a hunger to know how things play out for larger than 5 for things constant 
+    under reordering
+    """
+    u = np.unique(np.around(np.reshape(stat.fourier, stat.n**stat.m),6))
+    d = {}
+    for idx, x in np.ndenumerate(stat.fourier):
+        difference_array = np.absolute(u-x)
+        index = difference_array.argmin()
+
+        if u[index] not in d:
+            d[u[index]] = set()
+        
+        s = list(idx)
+        s.sort()
+        d[u[index]].add(tuple(s))
+
+    return d

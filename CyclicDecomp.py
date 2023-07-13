@@ -78,7 +78,7 @@ class CnmStat:
     ###################
     # Display options #
     ###################
-    def print_by_value(self, type = "fourier", hspace = 20, hide_zero = True, precision = 6):
+    def print_by_value(self, type = "fourier", hspace = 20, hide_zero = True, precision = 6, wait_input = False):
         """
         Prints the type of coefficients desired by thier value.
         """
@@ -120,6 +120,8 @@ class CnmStat:
                         print(str(tuple(reversed(idx))), end = "")
                         total += 1
             print()
+            if wait_input:
+                input()
         print(total)
 
     #####################
@@ -211,7 +213,7 @@ class CnmStat:
         strs = []                       # readable strings labling parts
         while len(ind) != 0:
             arr = []    # array for orbits of $S_n$ acting on the string
-            
+
             s = np.base_repr(ind[0], self.n)
             s = "0"*(self.m - len(s)) + s
             if inv:
