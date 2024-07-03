@@ -467,7 +467,3 @@ def orbits_involved(stat):
 
     return d
 
-def print_dict(d):
-    for x in d:
-        if x != 0:
-            print(x,d[x])
